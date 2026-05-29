@@ -11,6 +11,10 @@ const HOST = process.env.HOST || "0.0.0.0";
 const PORT = Number(process.env.PORT || 8788);
 const UPSTREAM_MAKEUP_TRANSFER_URL = (process.env.UPSTREAM_MAKEUP_TRANSFER_URL || "").trim();
 const UPSTREAM_AUTH_TOKEN = (process.env.UPSTREAM_AUTH_TOKEN || "").trim();
+// Shared secret required on incoming makeup-transfer requests.
+// When set, requests must include Authorization: Bearer <key> OR x-api-key: <key>.
+// Leave empty to disable the gate (e.g. local dev). Set on the production host.
+const MAKEUP_API_KEY = (process.env.MAKEUP_API_KEY || "").trim();
 const MOCK_TRANSFER_OUTPUT_PATH = (process.env.MOCK_TRANSFER_OUTPUT_PATH || "").trim();
 const GOOGLE_AI_API_KEY = (process.env.GOOGLE_AI_API_KEY || "").trim();
 const GOOGLE_AI_URL = (process.env.GOOGLE_AI_URL || "https://generativelanguage.googleapis.com/v1beta").trim();
@@ -73,6 +77,18 @@ const server = createServer(async (req, res) => {
         openaiTimeoutMs: OPENAI_GENERATION_TIMEOUT_MS
       });
       return;
+    }
+
+    // Require the shared secret on every makeup-transfer route when set.
+    // This prevents anonymous bots from hitting the AI endpoint at our cost.
+    if (MAKEUP_API_KEY && pathname.startsWith("/api/makeup-transfer")) {
+      const auth = (req.headers["authorization"] || "").toString();
+      const headerKey = (req.headers["x-api-key"] || "").toString().trim();
+      const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+      if (bearer !== MAKEUP_API_KEY && headerKey !== MAKEUP_API_KEY) {
+        writeJson(res, 401, { error: "Unauthorized." });
+        return;
+      }
     }
 
     if (req.method === "POST" && pathname === "/api/makeup-transfer/jobs") {
