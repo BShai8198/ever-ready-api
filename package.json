@@ -1,0 +1,13 @@
+{
+  "name": "everready-makeup-transfer-api",
+  "version": "1.0.0",
+  "description": "Ever Ready photoreal makeup transfer API",
+  "type": "module",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
